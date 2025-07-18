@@ -4,9 +4,12 @@ trigger:
       - main
 
 variables:
-  dockerRegistryServiceConnection: 'MyACRServiceConnection'
+  dockerRegistryServiceConnection: 'MyACRServiceConnection'   # ACR service connection name
+  azureSubscription: 'MyAzureRGConnection'                    # Azure service connection name
+  resourceGroup: 'IronMan-Mark-85'
+  aksClusterName: 'aks-instagram'
+  containerRegistry: 'ironmanacr.azurecr.io'                 # Replace with your actual ACR login server
   imageRepository: 'instagram-backend'
-  containerRegistry: '<your-acr-name>.azurecr.io'  # Replace with your ACR name
   dockerfilePath: 'Dockerfile'
   tag: '$(Build.BuildId)'
   agentFile: 'applicationinsights-agent-3.7.1.jar'
@@ -17,17 +20,19 @@ stages:
     displayName: 'Build and Push Docker Image'
     jobs:
       - job: Docker
-        displayName: 'Docker Build and Push'
+        displayName: 'Build and Push'
         pool:
           vmImage: 'ubuntu-latest'
         steps:
+          - checkout: self
+
           - task: Bash@3
             displayName: 'Download Application Insights Agent'
             inputs:
               targetType: 'inline'
               script: |
                 curl -Lo $(agentFile) https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.7.1/$(agentFile)
-                echo '{}' > $(configFile)  # basic config, customize later
+                echo '{}' > $(configFile)
 
           - task: Docker@2
             displayName: 'Build and Push Image to ACR'
@@ -50,17 +55,17 @@ stages:
           vmImage: 'ubuntu-latest'
         steps:
           - task: AzureCLI@2
-            displayName: 'Apply K8s YAML to AKS'
+            displayName: 'Get AKS Credentials and Apply K8s YAML'
             inputs:
-              azureSubscription: '<your-azure-rg-service-connection>'
+              azureSubscription: $(azureSubscription)
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
-                az aks get-credentials --resource-group <your-resource-group> --name <your-aks-name>
+                az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
 
-                echo "Deploying backend..."
+                echo "Deploying to AKS..."
+                kubectl apply -f k8s/cert-issuer.yaml
                 kubectl apply -f k8s/deployment.yaml
                 kubectl apply -f k8s/service.yaml
-                kubectl apply -f k8s/ingress.yaml
                 kubectl apply -f k8s/hpa.yaml
-                kubectl apply -f k8s/cert-issuer.yaml
+                kubectl apply -f k8s/ingress.yaml

@@ -18,35 +18,36 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            - name: APPLICATIONINSIGHTS_CONNECTION_STRING
-              valueFrom:
-                secretKeyRef:
-                  name: ai-secrets
-                  key: connection-string
-            - name: POSTGRES_HOST
-              value: <your-postgres-host>
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: pg-secrets
-                  key: username
-            - name: POSTGRES_PASS
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: pg-secrets
-                  key: password
-            - name: MONGO_USER
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_HOST
               valueFrom:
                 secretKeyRef:
-                  name: mongo-secrets
-                  key: username
-            - name: MONGO_PASS
+                  name: app-secrets
+                  key: POSTGRES_HOST
+            - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: mongo-secrets
-                  key: password
-            - name: MONGO_HOST
-              value: <your-mongo-host>
+                  name: app-secrets
+                  key: POSTGRES_DB
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MONGO_URI
+            - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: APPINSIGHTS_CONNECTION_STRING
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
