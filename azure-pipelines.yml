@@ -8,7 +8,7 @@ variables:
   azureSubscription: 'MyAzureRGConnection'                    # Azure service connection name
   resourceGroup: 'IronMan-Mark-85'
   aksClusterName: 'aks-instagram'
-  containerRegistry: 'ironmanacr.azurecr.io'                 # Replace with your actual ACR login server
+  containerRegistry: 'acrinstagram.azurecr.io'                 # Replace with your actual ACR login server
   imageRepository: 'instagram-backend'
   dockerfilePath: 'Dockerfile'
   tag: '$(Build.BuildId)'
