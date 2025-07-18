@@ -1,11 +1,24 @@
-FROM maven:3.9-eclipse-temurin-17 AS build
-WORKDIR /workspace
-COPY pom.xml .
-COPY src src
-RUN mvn -q -DskipTests package
+# ──────── Stage 1: Build with Maven ────────
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 
-FROM eclipse-temurin:17-jdk
+WORKDIR /build
+
+COPY pom.xml ./
+RUN mvn dependency:go-offline
+
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# ──────── Stage 2: Run with AI agent ────────
+FROM eclipse-temurin:21-jdk
+
 WORKDIR /app
-COPY --from=build /workspace/target/demo-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+
+# Copy built JAR
+COPY --from=build /build/target/instagram-app.jar app.jar
+
+# Copy AI agent and config (added by pipeline before build)
+COPY applicationinsights-agent-3.7.1.jar applicationinsights-agent.jar
+COPY applicationinsights.json applicationinsights.json
+
+ENTRYPOINT ["java", "-javaagent:/app/applicationinsights-agent.jar", "-jar", "app.jar"]

@@ -1,0 +1,12 @@
+# Ignore build and IDE files
+target/
+*.log
+*.class
+*.iml
+*.db
+.idea/
+.vscode/
+
+# Don't ignore Application Insights files (explicitly include them)
+!applicationinsights-agent-3.7.1.jar
+!applicationinsights.json

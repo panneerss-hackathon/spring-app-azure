@@ -1,38 +1,66 @@
 trigger:
-- main
-
-pool:
-  vmImage: 'ubuntu-latest'
+  branches:
+    include:
+      - main
 
 variables:
-  imageName: spring-app
+  dockerRegistryServiceConnection: 'MyACRServiceConnection'
+  imageRepository: 'instagram-backend'
+  containerRegistry: '<your-acr-name>.azurecr.io'  # Replace with your ACR name
+  dockerfilePath: 'Dockerfile'
+  tag: '$(Build.BuildId)'
+  agentFile: 'applicationinsights-agent-3.7.1.jar'
+  configFile: 'applicationinsights.json'
 
-steps:
-- task: Maven@3
-  inputs:
-    mavenPomFile: 'pom.xml'
-    goals: 'package'
-    options: '-DskipTests'
+stages:
+  - stage: Build
+    displayName: 'Build and Push Docker Image'
+    jobs:
+      - job: Docker
+        displayName: 'Docker Build and Push'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Bash@3
+            displayName: 'Download Application Insights Agent'
+            inputs:
+              targetType: 'inline'
+              script: |
+                curl -Lo $(agentFile) https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.7.1/$(agentFile)
+                echo '{}' > $(configFile)  # basic config, customize later
 
-- task: Docker@2
-  inputs:
-    command: buildAndPush
-    repository: $(imageName)
-    dockerfile: '**/Dockerfile'
-    containerRegistry: '$(ACR_SERVICE_CONNECTION)'
-    tags: latest
+          - task: Docker@2
+            displayName: 'Build and Push Image to ACR'
+            inputs:
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: $(imageRepository)
+              command: buildAndPush
+              Dockerfile: $(dockerfilePath)
+              tags: |
+                latest
+                $(tag)
 
-- task: KubectlInstaller@0
-  inputs:
-    kubectlVersion: 'latest'
+  - stage: Deploy
+    displayName: 'Deploy to AKS'
+    dependsOn: Build
+    jobs:
+      - job: Deploy
+        displayName: 'kubectl Apply to AKS'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Apply K8s YAML to AKS'
+            inputs:
+              azureSubscription: '<your-azure-rg-service-connection>'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az aks get-credentials --resource-group <your-resource-group> --name <your-aks-name>
 
-- task: AzureCLI@2
-  inputs:
-    azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-    scriptType: bash
-    scriptLocation: inlineScript
-    inlineScript: |
-      az aks get-credentials --resource-group $(AKS_RESOURCE_GROUP) --name $(AKS_CLUSTER) --admin --only-show-errors
-      kubectl apply -f aks/deployment.yaml
-      kubectl apply -f aks/service.yaml
-      kubectl apply -f aks/ingress.yaml
+                echo "Deploying backend..."
+                kubectl apply -f k8s/deployment.yaml
+                kubectl apply -f k8s/service.yaml
+                kubectl apply -f k8s/ingress.yaml
+                kubectl apply -f k8s/hpa.yaml
+                kubectl apply -f k8s/cert-issuer.yaml
