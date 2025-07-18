@@ -1,0 +1,38 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  imageName: spring-app
+
+steps:
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'package'
+    options: '-DskipTests'
+
+- task: Docker@2
+  inputs:
+    command: buildAndPush
+    repository: $(imageName)
+    dockerfile: '**/Dockerfile'
+    containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+    tags: latest
+
+- task: KubectlInstaller@0
+  inputs:
+    kubectlVersion: 'latest'
+
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+    scriptType: bash
+    scriptLocation: inlineScript
+    inlineScript: |
+      az aks get-credentials --resource-group $(AKS_RESOURCE_GROUP) --name $(AKS_CLUSTER) --admin --only-show-errors
+      kubectl apply -f aks/deployment.yaml
+      kubectl apply -f aks/service.yaml
+      kubectl apply -f aks/ingress.yaml
