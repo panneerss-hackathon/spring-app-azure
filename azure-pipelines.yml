@@ -1,0 +1,22 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'package'
+    options: '-Dmaven.test.skip=false'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.17'
+    mavenVersionOption: 'Default'
+    mavenAuthenticateFeed: false
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: 'target/spring-app-azure-0.0.1-SNAPSHOT.jar'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
