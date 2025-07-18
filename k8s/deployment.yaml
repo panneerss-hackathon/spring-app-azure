@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: spring-app
-          image: <acrinstagram.azurecr.io/instagram-backend:latest
+          image: acrinstagram.azurecr.io/instagram-backend:latest
           ports:
             - containerPort: 8080
           env:
